@@ -5,12 +5,12 @@ from collections.abc import Sequence
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-from simple_rag.data import RagRecord
+from src.data import RagRecord
 
 
 class QdrantStore:
     def __init__(self, url: str, api_key: str | None, collection_name: str) -> None:
-        self.client = QdrantClient(url=url, api_key=api_key)
+        self.client = QdrantClient(url=url, api_key=api_key, check_compatibility=False)
         self.collection_name = collection_name
 
     def ensure_collection(self, vector_size: int, recreate: bool = False) -> None:

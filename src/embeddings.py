@@ -1,15 +1,25 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import os
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+try:
+    import torch
+except ImportError:  # pragma: no cover
+    torch = None
+
 
 class EmbeddingModel:
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, max_seq_length: int | None = None) -> None:
         self.model_name = model_name
+        if torch is not None:
+            torch.set_num_threads(int(os.getenv("RAG_TORCH_NUM_THREADS", "1")))
         self.model = SentenceTransformer(model_name)
+        if max_seq_length is not None:
+            self.model.max_seq_length = max_seq_length
 
     @property
     def dimension(self) -> int:

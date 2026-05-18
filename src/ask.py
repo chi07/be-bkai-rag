@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import argparse
 
-from simple_rag.config import load_settings
-from simple_rag.embeddings import EmbeddingModel
-from simple_rag.qdrant_store import QdrantStore
+from src.config import load_settings
+from src.embeddings import EmbeddingModel
+from src.qdrant_store import QdrantStore
 
 
 def main() -> None:
@@ -14,7 +14,7 @@ def main() -> None:
     args = parser.parse_args()
 
     settings = load_settings()
-    embedder = EmbeddingModel(settings.embedding_model)
+    embedder = EmbeddingModel(settings.embedding_model, max_seq_length=settings.max_seq_length)
     store = QdrantStore(settings.qdrant_url, settings.qdrant_api_key, settings.collection_name)
 
     query_vector = embedder.encode_one(args.question)

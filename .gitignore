@@ -1,2 +1,29 @@
-__pycache__
-.venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local config and secrets
+.env
+.env.*
+!.env.example
+
+# Build/cache artifacts
+build/
+dist/
+*.egg-info/
+.cache/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/

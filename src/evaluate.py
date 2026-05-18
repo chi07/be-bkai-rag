@@ -4,10 +4,10 @@ import argparse
 
 from tqdm import tqdm
 
-from simple_rag.config import load_settings
-from simple_rag.data import iter_eval_rows, load_bkai_dataset
-from simple_rag.embeddings import EmbeddingModel
-from simple_rag.qdrant_store import QdrantStore
+from src.config import load_settings
+from src.data import iter_eval_rows, load_bkai_dataset
+from src.embeddings import EmbeddingModel
+from src.qdrant_store import QdrantStore
 
 
 def main() -> None:
@@ -21,7 +21,7 @@ def main() -> None:
     dataset = load_bkai_dataset(settings.dataset_name, settings.dataset_config, split=args.split)
     rows = list(iter_eval_rows(dataset, limit=args.limit))
 
-    embedder = EmbeddingModel(settings.embedding_model)
+    embedder = EmbeddingModel(settings.embedding_model, max_seq_length=settings.max_seq_length)
     store = QdrantStore(settings.qdrant_url, settings.qdrant_api_key, settings.collection_name)
 
     hits = 0

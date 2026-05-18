@@ -1,0 +1,94 @@
+from __future__ import annotations
+
+import requests
+
+
+SYSTEM_PROMPT = (
+    "Bạn là trợ lý hỏi đáp RAG tiếng Việt. "
+    "Chỉ trả lời dựa trên ngữ cảnh được cung cấp. "
+    "Nếu ngữ cảnh không đủ thông tin, hãy nói không đủ thông tin."
+)
+
+
+def build_user_prompt(question: str, contexts: list[str]) -> str:
+    context_block = "\n\n".join(
+        f"[{index}] {context}" for index, context in enumerate(contexts, start=1)
+    )
+    return (
+        f"Ngữ cảnh:\n{context_block}\n\n"
+        f"Câu hỏi: {question}\n\n"
+        "Trả lời ngắn gọn, đúng trọng tâm bằng tiếng Việt."
+    )
+
+
+class Generator:
+    def __init__(
+        self,
+        provider: str = "extractive",
+        base_url: str = "http://localhost:11434",
+        api_key: str | None = None,
+        model: str = "llama3.1",
+    ) -> None:
+        self.provider = provider
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
+
+    def generate(self, question: str, contexts: list[str]) -> str:
+        if self.provider == "extractive":
+            return self._extractive_answer(contexts)
+        if self.provider == "ollama":
+            return self._ollama_answer(question, contexts)
+        if self.provider == "openai-compatible":
+            return self._openai_compatible_answer(question, contexts)
+        raise ValueError(
+            "Unsupported RAG_GENERATOR_PROVIDER. Use: extractive, ollama, openai-compatible."
+        )
+
+    def _extractive_answer(self, contexts: list[str]) -> str:
+        if not contexts:
+            return "Không đủ thông tin trong ngữ cảnh đã retrieve."
+        return (
+            "Generator provider đang là 'extractive', nên chưa gọi LLM. "
+            "Context liên quan nhất:\n"
+            f"{contexts[0]}"
+        )
+
+    def _ollama_answer(self, question: str, contexts: list[str]) -> str:
+        response = requests.post(
+            f"{self.base_url}/api/chat",
+            json={
+                "model": self.model,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": build_user_prompt(question, contexts)},
+                ],
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["message"]["content"].strip()
+
+    def _openai_compatible_answer(self, question: str, contexts: list[str]) -> str:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        response = requests.post(
+            f"{self.base_url}/chat/completions",
+            headers=headers,
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": build_user_prompt(question, contexts)},
+                ],
+                "temperature": 0.2,
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"].strip()
