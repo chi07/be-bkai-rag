@@ -178,6 +178,40 @@ curl -X POST http://localhost:8000/answer \
   }'
 ```
 
+Chat nhiều lượt cần gửi cùng `session_id`. Request đầu tiên có thể tự sinh `session_id` trong response, hoặc frontend tự đặt:
+
+```bash
+curl -X POST http://localhost:8000/answer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "demo-ly-hai",
+    "question": "Lý Hải hết thời chưa?",
+    "retrieve_k": 5,
+    "rerank_k": 3,
+    "include_contexts": false
+  }'
+```
+
+Follow-up cùng session:
+
+```bash
+curl -X POST http://localhost:8000/answer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "demo-ly-hai",
+    "question": "Bạn biết gì về anh ta?",
+    "retrieve_k": 5,
+    "rerank_k": 3,
+    "include_contexts": false
+  }'
+```
+
+Xóa session:
+
+```bash
+curl -X DELETE http://localhost:8000/sessions/demo-ly-hai
+```
+
 Chỉ retrieve context:
 
 ```bash

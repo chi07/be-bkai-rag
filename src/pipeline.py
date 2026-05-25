@@ -52,11 +52,19 @@ class RagPipeline:
         reranker = self._load_reranker()
         return reranker.rerank(question, retrieved, top_k=rerank_k)
 
-    def answer(self, question: str, retrieve_k: int = 20, rerank_k: int = 5) -> RagResponse:
-        retrieved = self.retrieve(question, retrieve_k=retrieve_k)
-        final_contexts = self.rerank(question, retrieved, rerank_k=rerank_k)
+    def answer(
+        self,
+        question: str,
+        retrieve_k: int = 20,
+        rerank_k: int = 5,
+        history: list[dict[str, str]] | None = None,
+        retrieval_question: str | None = None,
+    ) -> RagResponse:
+        query = retrieval_question or question
+        retrieved = self.retrieve(query, retrieve_k=retrieve_k)
+        final_contexts = self.rerank(query, retrieved, rerank_k=rerank_k)
         context_texts = [item["payload"].get("context", "") for item in final_contexts]
         print("RAG stage: generating answer", flush=True)
-        answer = self.generator.generate(question, context_texts)
+        answer = self.generator.generate(question, context_texts, history=history)
         print("RAG stage: done", flush=True)
         return RagResponse(answer=answer, contexts=final_contexts)

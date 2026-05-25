@@ -6,15 +6,34 @@ import requests
 SYSTEM_PROMPT = (
     "Bạn là trợ lý hỏi đáp RAG tiếng Việt. "
     "Chỉ trả lời dựa trên ngữ cảnh được cung cấp. "
+    "Nếu câu hỏi hiện tại dùng đại từ hoặc cách nói tiếp nối như 'anh ta', 'người đó', "
+    "'vậy còn', hãy dùng lịch sử hội thoại để hiểu người dùng đang nhắc tới ai. "
     "Nếu ngữ cảnh không đủ thông tin, hãy nói không đủ thông tin."
 )
 
 
-def build_user_prompt(question: str, contexts: list[str]) -> str:
+def build_history_block(history: list[dict[str, str]] | None) -> str:
+    if not history:
+        return ""
+    lines = []
+    for turn in history:
+        role = "Người dùng" if turn["role"] == "user" else "Trợ lý"
+        lines.append(f"{role}: {turn['content']}")
+    return "\n".join(lines)
+
+
+def build_user_prompt(
+    question: str,
+    contexts: list[str],
+    history: list[dict[str, str]] | None = None,
+) -> str:
     context_block = "\n\n".join(
         f"[{index}] {context}" for index, context in enumerate(contexts, start=1)
     )
+    history_block = build_history_block(history)
+    history_section = f"Lịch sử hội thoại:\n{history_block}\n\n" if history_block else ""
     return (
+        f"{history_section}"
         f"Ngữ cảnh:\n{context_block}\n\n"
         f"Câu hỏi: {question}\n\n"
         "Trả lời ngắn gọn, đúng trọng tâm bằng tiếng Việt."
@@ -34,13 +53,18 @@ class Generator:
         self.api_key = api_key
         self.model = model
 
-    def generate(self, question: str, contexts: list[str]) -> str:
+    def generate(
+        self,
+        question: str,
+        contexts: list[str],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         if self.provider == "extractive":
             return self._extractive_answer(contexts)
         if self.provider == "ollama":
-            return self._ollama_answer(question, contexts)
+            return self._ollama_answer(question, contexts, history=history)
         if self.provider == "openai-compatible":
-            return self._openai_compatible_answer(question, contexts)
+            return self._openai_compatible_answer(question, contexts, history=history)
         raise ValueError(
             "Unsupported RAG_GENERATOR_PROVIDER. Use: extractive, ollama, openai-compatible."
         )
@@ -54,7 +78,12 @@ class Generator:
             f"{contexts[0]}"
         )
 
-    def _ollama_answer(self, question: str, contexts: list[str]) -> str:
+    def _ollama_answer(
+        self,
+        question: str,
+        contexts: list[str],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         response = requests.post(
             f"{self.base_url}/api/chat",
             json={
@@ -62,7 +91,7 @@ class Generator:
                 "stream": False,
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": build_user_prompt(question, contexts)},
+                    {"role": "user", "content": build_user_prompt(question, contexts, history)},
                 ],
             },
             timeout=120,
@@ -71,7 +100,12 @@ class Generator:
         data = response.json()
         return data["message"]["content"].strip()
 
-    def _openai_compatible_answer(self, question: str, contexts: list[str]) -> str:
+    def _openai_compatible_answer(
+        self,
+        question: str,
+        contexts: list[str],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -83,7 +117,7 @@ class Generator:
                 "model": self.model,
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": build_user_prompt(question, contexts)},
+                    {"role": "user", "content": build_user_prompt(question, contexts, history)},
                 ],
                 "temperature": 0.2,
             },
